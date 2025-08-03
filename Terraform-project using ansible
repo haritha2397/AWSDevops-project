@@ -1,1 +1,215 @@
-hI
+AUTOMATED INFRASTRUCTURE PROVISIONING WITH JENKINS, TERRAFORM AND ANSIBLE DYNAMIC INVENTORY
+
+
+This project demonstrates a complete DevOps automation workflow where infrastructure is provisioned and configured dynamically using a CI/CD pipeline. The pipeline is orchestrated with Jenkins, utilizing Terraform for Infrastructure as Code (IaC) and Ansible for post-provisioning configuration.
+The flow includes:
+Developers push Terraform code to GitHub
+Jenkins automatically pulls the code and performs terraform init, plan, and apply
+Executes Ansible playbooks using a dynamic inventory mechanism through a custom plugin
+Infrastructure is created in a VPC with multiple EC2 instances, an Auto Scaling Group (ASG), and a Load Balancer
+Failed instances (e.g., Instance-1) are automatically replaced by the ASG
+Configurations are applied seamlessly across newly provisioned instances
+
+This project emphasizes the use of custom dynamic inventory plugins to adapt Ansible automation to dynamic cloud infrastructure, ensuring scalability and real-time configuration management.
+
+🛠️ Tools and Technologies
+Terraform – Infrastructure as Code (IaC)
+Ansible – Configuration management with dynamic inventory
+Jenkins – CI/CD orchestration
+GitHub – Source code version control
+AWS – Cloud provider (EC2, VPC, ASG, Load Balancer)
+📁 Repository Structure
+├── ansible/
+│   └── deployment.yml        # Ansible Playbook
+├── main.tf                   # Terraform main configuration
+├── provider.tf               # AWS provider setup
+├── s3.tf                     # S3 bucket configuration
+├── security.tf               # Security group rules
+├── README.md                 # Project documentation
+🔧 Step 1: Create EC2 Instance
+🔧 Step 2: Jenkins Setup
+🔧 Step 3: Install Terraform
+🔧 Step 4: Install Git
+
+🚀 Jenkins Pipeline Setup
+pipeline {
+agent any
+stages {
+stage ("Code") {
+steps {
+git branch: 'main', url: 'https://github.com/haritha2397/terraformproject.git'
+}
+}
+}
+}
+🔐 IAM User Setup
+🔐 1. Sign in to AWS Console
+Go to: https://console.aws.amazon.com/iam
+👤 2. Select or Create IAM User
+Navigate to IAM → Users
+Choose an existing user or click “Add user”
+Enable Programmatic access (this allows creation of access keys)
+🛡️ 3. Set Permissions
+Attach a policy like:
+AdministratorAccess (for full access)
+Or a custom policy for limited access
+🔄 4. Create Access Key
+Go to the user’s Security credentials tab
+Click “Create access key”
+Choose “Third-party service” as the intended use
+This scopes the key for use in external tools like Jenkins
+📥 5. Download Credentials
+Copy or download the Access Key ID and Secret Access Key
+Store them securely — you won’t be able to view the secret again
+🔐 IAM Role Setup for EC2
+🔹 1. Go to IAM Console
+URL: https://console.aws.amazon.com/iam
+🔹 2. Create Role
+Click “Roles” → “Create role”
+Trusted entity type: Select AWS service
+Use case: Choose EC2
+🔹 3. Attach Permissions
+Choose one or more policies depending on what EC2 access you need:
+You can also create a custom policy if you want fine-grained control.
+🔹 4. Name the Role
+Example: EC2AccessRole
+🔹 5. Create Role
+Review and click “Create role”
+🔁 Attach Role to EC2 Instance
+Go to EC2 Console
+Select your instance → Actions → Security → Modify IAM Role
+Choose the role you just created (EC2AccessRole) and attach it
+
+✅ Jenkins Credentials Best Practices
+Instead of embedding AWS Access Key and Secret Key directly in the pipeline (which is insecure), you:
+Store credentials securely in Jenkins.
+Inject them into the pipeline using environment variables.
+🔐 Steps to Configure AWS Credentials in Jenkins
+Using Environment Variables via System Configuration
+Steps:
+Go to Manage Jenkins → Configure System
+Scroll to Global properties
+Check “Environment variables”
+Add:
+Name: access_key → Value: <paste your AWS Access Key ID>
+Name: secret_key → Value: <paste your AWS Secret Access Key>
+✅ Jenkins Credentials Setup (Method 2)
+🔐 Step-by-Step: Add AWS Access Key as Secret Text
+Go to Manage Jenkins → Credentials → (Global) → Add Credentials
+Fill in the fields:
+Kind: Secret text
+Secret: Paste your AWS Access Key
+ID: access_key
+Description: my access key
+🔁 Repeat the same for the Secret Access Key:
+Kind: Secret text
+Secret: Paste your AWS Secret Access Key
+ID: secret_key
+Description: my secret key
+When you run the Jenkins pipeline shown in your images, the variables declared using both methods are triggered and used as follows:
+pipeline {
+agent any
+environment {
+AWS_ACCESS_KEY_ID = credentials('access_key')
+AWS_SECRET_ACCESS_KEY = credentials('secret_key')
+}
+
+Stage 2:
+stage ("infra") {
+steps {
+sh '''
+terraform plan
+terraform $action --auto-approve
+'''
+}
+}
+
+Parameter Name: action (mention action in above code terraform $action –auto-approve)
+Choices:
+apply
+destroy
+🔧 Install Ansible and Dependencies
+To deploy an application on your EC2 instance using Ansible without manually touching the server, you can use dynamic inventory. This allows Ansible to automatically discover EC2 instances using AWS APIs.
+PIP INSTALL BOTO3
+No Manual SSH Needed
+Ansible connects using the EC2 public DNS and your SSH key
+You can define the key in your Ansible config or inventory
+[root@ip-172-31-88-138 ~]# ll
+total 0
+[root@ip-172-31-88-138 ~]# cd /etc/ansible/
+[root@ip-172-31-88-138 ansible]# ll
+total 24
+-rw-r--r-- 1 root root 19985 Jul 1 2021 ansible.cfg
+-rw-r--r-- 1 root root 1016 Jul 1 2021 hosts
+drwxr-xr-x 2 root root    6 Jul 1 2021 roles
+[root@ip-172-31-88-138 ansible]# vim ansible.cfg
+
+inventory      = /opt/ansible/inventory/aws_ec2.yml
+host_key_checking = false
+inventory      = /etc/ansible/hosts
+:330—>enable_plugins= aws_ec2
+
+
+Vim keypairname.pem  paste the keypair
+🚀 Run Jenkins Pipeline
+Terraform configuration file to create an AWS S3 bucket for storing Terraform state, with versioning and server-side encryption enabled:(devops0014/devops18 add s3.tf file) to create bucket (change key name, ami_id in the main.tf file)
+⚙️ Build with Parameters
+Stage(“init”){
+Steps{
+Script{
+Sh ‘echo -e “yes\n” | terraform init’  (do u want to save all state files ‘yes’ input to terraform init)
+}}}
+⚙️ Build with Parameters
+
+We mentioned a path /opt/ansible/inventory/aws_ec2.yml
+Now we have to create a path mkdir -p /opt/ansible/inventory
+Cd /opt/ansible/inventory
+Vim aws_ec2.yml (we create this plugin because of gathering the information from slave server, in that slave server we have to execute the playbook
+Playbook
+---
+Plugin:aws_ec2
+Regions:
+Us-east-1
+Filters:((at what basis we have to filter the instance by using tages)
+Tag:aws:autoscaling:groupName: web-server-asg  (key:value-tags for particular instance)
+Playbook already mentioned in github deployment.yml file
+Change ansible_ssh_private-key_file in deployment.yml
+
+Stage(“deploy”){
+Steps{
+Sh ‘ansible-playbook -i /opt/ansible/inventory/aws_ec2.yml /var/lib/Jenkins/workspace/myproject/ansible/deployment.yml ’
+( plugin there in aws_ec2.yml(collect infm from prod server), some servers through plugin in that servers execute deployment.yml file)
+⚙️ Build with Parameters
+
+🌐 Access Web Server via Load Balancer
+
+📬 Auto Scaling Notifications
+wIth these recipients:email address
+check mails are getting or not if instances are terminated / started/running
+(run the pipeline if terminated, new instance created)
+
+
+pipeline {
+agent any
+environment {
+AWS_ACCESS_KEY_ID = credentials('access_key')
+AWS_SECRET_ACCESS_KEY = credentials('secret_key')
+}
+Stage(“init”){
+Steps{
+Script{
+Sh ‘echo -e “yes\n” | terraform init’  (do u want to save all state files ‘yes’ input to terraform init)
+}}}
+stage ("infra") {
+steps {
+sh '''
+terraform plan
+terraform $action --auto-approve
+'''
+}
+}
+Stage(“deploy”){
+Steps{
+Sh ‘ansible-playbook -i /opt/ansible/inventory/aws_ec2.yml /var/lib/Jenkins/workspace/myproject/ansible/deployment.yml ’
+( plugin there in aws_ec2.yml(collect infm from prod server), some servers through plugin in that servers execute deployment.yml file)
+}
