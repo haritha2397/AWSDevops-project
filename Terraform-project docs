@@ -1,0 +1,103 @@
+Deploying war file in production server(toncat)
+------------------------------------------------
+
+Install git
+Set up Jenkins
+Vim Jenkins.sh
+Chmod  +x Jenkins.sh
+./Jenkins.sh
+Process of releasing application is called deployment
+Java cold=build +test=generate war file(war file placed in application server(tomcat) to deploy application
+
+
+
+To deploy this war file,We need application server like tomcat.
+Repository name one fork this repo
+✅ Jenkins CI/CD Setup with GitHub
+1. Source Code Management
+Go to your Jenkins job configuration.
+Under Source Code Management, select Git.
+In the Repository URL, paste your GitHub project URL (e.g., https://github.com/your-username/your-repo.git).
+Under Credentials, add GitHub credentials if required.(if private repo)
+In Branches to build, enter: */master
+Check in workspace : cd /var/lib/jenkins/workspace/my-deployment
+Jenkins Maven Build and Test Setup (Step-by-Step)
+Use Maven for Build
+The project uses Maven to manage Java dependencies and build process.
+Install Maven
+Ensure Maven is installed and properly configured on the Jenkins server.
+Configure Jenkins Job
+In the same Jenkins job:
+Go to Build Steps
+Select Invoke top-level Maven targets
+Set Goals to:
+clean package
+Save and Build
+Save the job configuration and trigger a build.
+If the build is successful, a .war file will be generated.
+Check Workspace
+Navigate to the Jenkins workspace directory:
+cd /var/lib/jenkins/workspace/mydeployment/
+You will find:
+The .war file in the target/ folder
+Test result files (from Surefire) used to verify the build
+Build + Test = Done
+The build and test process is complete.
+
+✅ Tomcat Setup & Deployment on Production Server
+1. Launch Production Server
+Create a new server instance (e.g., EC2).
+Use the same security group as Jenkins so Jenkins can communicate with Tomcat (for deployment or automation).
+2. Install Java (Tomcat Dependency)
+Tomcat requires Java. Install it using:
+3. Download and Extract Tomcat
+Go to https://dlcdn.apache.org and copy the latest .tar.gz link.
+On the production server:
+4. Configure Tomcat Manager Access
+a. Edit context.xml
+Navigate to:
+Open context.xml and delete the two lines around line 21 that restrict access (use vi or nano):
+b. Edit tomcat-users.xml
+Navigate to:
+Scroll to the end (G in vi) and add the following lines:
+5. Start Tomcat
+6. Deploy Web Application
+Copy your .war file (from Jenkins build) to:
+Tomcat will auto-deploy the .war file.
+7. Access the Application
+Open a browser and go to:
+http://<your-public-ip>:8080
+
+✅ Steps to Deploy WAR from Jenkins to Tomcat
+1. Install Jenkins Plugin
+Go to Jenkins Dashboard → Manage Jenkins → Manage Plugins
+Under the Available tab, search for:
+Deploy to container
+Install and restart Jenkins if required.
+2. Configure Jenkins Job
+Open your Jenkins job configuration.
+Scroll to Post-build Actions
+Click Add post-build action → Select Deploy war/ear to a container
+3. Deployment Settings
+WAR/EAR files:
+target/*.war
+Context path:
+/swiggy
+Container:
+Select Tomcat 9.x
+4. Add Tomcat Credentials
+Go to Manage Jenkins → Credentials
+Add a new credential:
+Username: tomcat
+Password: Admin@123
+5. Tomcat Server URL
+Use the production server’s public IP:
+http://<prod-server-ip>:8080/
+6. Save and Build
+Save the job configuration.
+Trigger a build.
+Jenkins will deploy the .war file to Tomcat.
+7. Verify Deployment
+Open a browser and go to:
+http://<prod-server-ip>:8080/swiggy
+You should see your web application running.
