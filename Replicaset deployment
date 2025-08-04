@@ -1,0 +1,89 @@
+Kubernetes ReplicaSet Deployment
+This project demonstrates setting up a Kubernetes cluster using Kops, deploying a ReplicaSet, creating a Pod, and exposing it via a NodePort Service.
+
+KOPS SETUP ON AMAZON LINUX:
+STEP-1: LAUNCH INSTANCE WITH T2.MICRO AND 30 GB SSD
+STEP-2: INSTALL AWS CLI
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+  TO CHECK VERSION: /usr/local/bin/aws --version
+   TO SET PATH: 
+vim .bashrc
+export PATH=$PATH:/usr/local/bin/
+source .bashrc
+aws –version
+
+STEP-3: INSTALL KOPS & KUBECTL
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+wget https://github.com/kubernetes/kops/releases/download/v1.24.1/kops-linux-amd64
+
+PERMISSIONS: chmod +x kops-linux-amd64 kubectl
+MOVE FILES: mv kubectl /usr/local/bin/kubectl
+MOVE FILES: mv kops-linux-amd64 /usr/local/bin/kops
+TO SEE VERSION: kubectl version && kops version
+STEP-4: CREATE IAM USER WITH ADMIN PERMISSIONS AND CONFIGURE IT IN ANY REGION WITH TABLE FORMAT
+
+STEP-5: CREATE INFRA SETUP
+TO CREATE BUCKET: aws s3api create-bucket --bucket mustafask.k8s.local --region us-east-1
+
+TO ENABLE VERSION: aws s3api put-bucket-versioning --bucket mustafask.k8s.local --region us-east-1 --versioning-configuration Status=Enabled
+EXPORT CLUSTER DATA INTO BUCKET: export KOPS_STATE_STORE=s3://mustafask.k8s.local
+GENERATE-KEY: ssh-keygen
+TO CREATE CLUSTER: kops create cluster --name musta.k8s.local --zones us-east-1a --master-size t2.medium --node-size t2.micro
+TO SEE THE CLUSTER: kops get cluster
+IF YOU WANT TO EDIT THE CLUSTER: kops edit cluster cluster_name
+TO RUN THE CLUSTER: kops update cluster --name musta.k8s.local --yes --admin
+TO DELETE THE CLUSTER: Kops delete cluster --name musta.k8s.local –yes
+
+ReplicaSet Configuration (rc.yml)
+-------------------------------
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: my-rs
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flm
+  template:
+    metadata:
+      labels:
+        app: flm
+    spec:
+      containers:
+      - name: cont-1
+        image: shaikmustafa/cycle
+        ports:
+        - containerPort: 80
+
+
+kubectl apply -f rc.yml
+kubectl get rs
+kubectl get pods
+kubectl get po -o wide
+
+Service Configuration (service.yml)
+-----------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: NodePort
+  selector:
+    app: flm
+  ports:
+    - port: 80
+      targetPort: 80
+
+kubectl apply -f service.yml
+kubectl get svc
+kubectl scale rs my-rs replicas 5
+kubectl get po -o wide
+kubectl delete rs my-rs  - -cascade=orphan(here deleting rs but not pods inside rs)
+((if pods deleted then no new pods created because of rs deleted)))
+Rs supports both setbased selector and equality based selector)
+Accesss the web application through web browser using nodeip:nodeport
+ 
